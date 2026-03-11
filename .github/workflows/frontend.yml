@@ -3,8 +3,6 @@ name: Deploy Frontend
 on:
   push:
     branches: [main]
-    paths:
-      - 'school-frontend/**'
 
 jobs:
   deploy:
@@ -17,7 +15,6 @@ jobs:
           node-version: '20'
 
       - name: Install & Build
-        working-directory: school-frontend
         run: |
           npm ci
           npm run generate
@@ -26,7 +23,7 @@ jobs:
 
       - name: Deploy to S3
         run: |
-          aws s3 sync school-frontend/.output/public s3://school-frontend-munkhuu --delete
+          aws s3 sync .output/public s3://school-frontend-munkhuu --delete
         env:
           AWS_ACCESS_KEY_ID: ${{ secrets.AWS_ACCESS_KEY_ID }}
           AWS_SECRET_ACCESS_KEY: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
