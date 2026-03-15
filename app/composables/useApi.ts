@@ -3,10 +3,9 @@ export const useApi = () => {
   const token = useCookie('token')
 
   const getHeaders = (): Record<string, string> => {
-    if (token.value) {
-      return { Authorization: `Bearer ${token.value}` }
-    }
-    return {}
+    const h: Record<string, string> = { 'Content-Type': 'application/json' }
+    if (token.value) h.Authorization = `Bearer ${token.value}`
+    return h
   }
 
   const get = async (path: string) => {
@@ -20,9 +19,7 @@ export const useApi = () => {
 
   const post = async (path: string, body: any) => {
     return await $fetch(`${config.public.apiBase}${path}`, {
-      method: 'POST',
-      headers: getHeaders(),
-      body,
+      method: 'POST', headers: getHeaders(), body,
       onResponseError({ response }) {
         if (response.status === 401) navigateTo('/login')
       }
@@ -31,9 +28,7 @@ export const useApi = () => {
 
   const put = async (path: string, body: any) => {
     return await $fetch(`${config.public.apiBase}${path}`, {
-      method: 'PUT',
-      headers: getHeaders(),
-      body,
+      method: 'PUT', headers: getHeaders(), body,
       onResponseError({ response }) {
         if (response.status === 401) navigateTo('/login')
       }
@@ -42,8 +37,7 @@ export const useApi = () => {
 
   const del = async (path: string) => {
     return await $fetch(`${config.public.apiBase}${path}`, {
-      method: 'DELETE',
-      headers: getHeaders(),
+      method: 'DELETE', headers: getHeaders(),
       onResponseError({ response }) {
         if (response.status === 401) navigateTo('/login')
       }

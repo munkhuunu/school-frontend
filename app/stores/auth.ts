@@ -15,6 +15,7 @@ export const useAuthStore = defineStore('auth', {
     isTeacher: (state) => state.user?.role === 'TEACHER',
     isParent: (state) => state.user?.role === 'PARENT',
     isStudent: (state) => state.user?.role === 'STUDENT',
+    canManage: (state) => ['DIRECTOR', 'MANAGER'].includes(state.user?.role),
   },
 
   actions: {
@@ -46,10 +47,10 @@ export const useAuthStore = defineStore('auth', {
       this.token = tokenCookie.value ?? null
       if (userCookie.value) {
         try {
-          this.user = JSON.parse(userCookie.value as string)
-        } catch {
-          this.user = null
-        }
+          this.user = typeof userCookie.value === 'string'
+            ? JSON.parse(userCookie.value)
+            : userCookie.value
+        } catch { this.user = null }
       }
     }
   }
