@@ -2,47 +2,18 @@ export const useApi = () => {
   const config = useRuntimeConfig()
   const token = useCookie('token')
 
-  const getHeaders = (): Record<string, string> => {
-    const h: Record<string, string> = { 'Content-Type': 'application/json' }
-    if (token.value) h.Authorization = `Bearer ${token.value}`
-    return h
+  const h = (): Record<string, string> => {
+    const headers: Record<string, string> = { 'Content-Type': 'application/json' }
+    if (token.value) headers.Authorization = `Bearer ${token.value}`
+    return headers
   }
 
-  const get = async (path: string) => {
-    return await $fetch(`${config.public.apiBase}${path}`, {
-      headers: getHeaders(),
-      onResponseError({ response }) {
-        if (response.status === 401) navigateTo('/login')
-      }
-    })
-  }
+  const onErr = ({ response }: any) => { if (response.status === 401) navigateTo('/login') }
 
-  const post = async (path: string, body: any) => {
-    return await $fetch(`${config.public.apiBase}${path}`, {
-      method: 'POST', headers: getHeaders(), body,
-      onResponseError({ response }) {
-        if (response.status === 401) navigateTo('/login')
-      }
-    })
-  }
-
-  const put = async (path: string, body: any) => {
-    return await $fetch(`${config.public.apiBase}${path}`, {
-      method: 'PUT', headers: getHeaders(), body,
-      onResponseError({ response }) {
-        if (response.status === 401) navigateTo('/login')
-      }
-    })
-  }
-
-  const del = async (path: string) => {
-    return await $fetch(`${config.public.apiBase}${path}`, {
-      method: 'DELETE', headers: getHeaders(),
-      onResponseError({ response }) {
-        if (response.status === 401) navigateTo('/login')
-      }
-    })
-  }
+  const get = (path: string) => $fetch(`${config.public.apiBase}${path}`, { headers: h(), onResponseError: onErr })
+  const post = (path: string, body: any) => $fetch(`${config.public.apiBase}${path}`, { method: 'POST', headers: h(), body, onResponseError: onErr })
+  const put = (path: string, body: any) => $fetch(`${config.public.apiBase}${path}`, { method: 'PUT', headers: h(), body, onResponseError: onErr })
+  const del = (path: string) => $fetch(`${config.public.apiBase}${path}`, { method: 'DELETE', headers: h(), onResponseError: onErr })
 
   return { get, post, put, del }
 }

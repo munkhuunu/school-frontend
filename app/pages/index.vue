@@ -1,7 +1,4 @@
-<template>
-  <div></div>
-</template>
-
+<template><div /></template>
 <script setup lang="ts">
 definePageMeta({ middleware: () => navigateTo('/login') })
 </script>

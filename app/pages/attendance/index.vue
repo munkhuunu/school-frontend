@@ -1,132 +1,65 @@
 <template>
-  
-    <div class="p-8">
-      <h1 class="text-2xl font-bold mb-6">Дүн оруулах</h1>
+  <div class="p-6 lg:p-8 max-w-6xl">
+    <h1 class="page-title mb-6">Ирц бүртгэх</h1>
 
-      <!-- Filters -->
-      <div class="bg-white rounded-xl shadow-sm border border-gray-100 p-5 mb-6">
-        <div class="grid grid-cols-1 md:grid-cols-3 gap-4">
-          <div>
-            <label class="block text-sm font-medium mb-1">Сургууль</label>
-            <select v-model="selectedSchoolId" @change="onSchoolChange"
-              class="w-full border border-gray-200 rounded-lg px-4 py-2.5 focus:outline-none focus:ring-2 focus:ring-blue-500">
-              <option value="">Сонгох...</option>
-              <option v-for="s in schools" :key="s.schoolId" :value="s.schoolId">{{ s.name }}</option>
-            </select>
-          </div>
-          <div>
-            <label class="block text-sm font-medium mb-1">Анги</label>
-            <select v-model="selectedClassId" @change="onClassChange"
-              class="w-full border border-gray-200 rounded-lg px-4 py-2.5 focus:outline-none focus:ring-2 focus:ring-blue-500">
-              <option value="">Сонгох...</option>
-              <option v-for="c in classes" :key="c.classId" :value="c.classId">{{ c.name }}</option>
-            </select>
-          </div>
-          <div>
-            <label class="block text-sm font-medium mb-1">Хичээл</label>
-            <select v-model="selectedSubjectId"
-              class="w-full border border-gray-200 rounded-lg px-4 py-2.5 focus:outline-none focus:ring-2 focus:ring-blue-500">
-              <option value="">Сонгох...</option>
-              <option v-for="sub in subjects" :key="sub.subjectId" :value="sub.subjectId">{{ sub.name }}</option>
-            </select>
-          </div>
-        </div>
-      </div>
-
-      <!-- Grade Table -->
-      <div v-if="students.length && selectedSubjectId" class="bg-white rounded-xl shadow-sm border border-gray-100 overflow-hidden">
-        <table class="w-full">
-          <thead class="bg-gray-50">
-            <tr>
-              <th class="text-left px-5 py-3 text-xs font-medium text-gray-500 uppercase">#</th>
-              <th class="text-left px-5 py-3 text-xs font-medium text-gray-500 uppercase">Сурагч</th>
-              <th class="text-left px-5 py-3 text-xs font-medium text-gray-500 uppercase">Оноо (0-100)</th>
-              <th class="text-left px-5 py-3 text-xs font-medium text-gray-500 uppercase">Тайлбар</th>
-              <th class="px-5 py-3"></th>
-            </tr>
-          </thead>
-          <tbody>
-            <tr v-for="(s, i) in students" :key="s.studentId" class="border-t">
-              <td class="px-5 py-3 text-sm text-gray-400">{{ i + 1 }}</td>
-              <td class="px-5 py-3 font-medium">{{ s.lastName }} {{ s.firstName }}</td>
-              <td class="px-5 py-3">
-                <input v-model.number="gradeInputs[s.studentId]" type="number" min="0" max="100"
-                  class="w-20 border border-gray-200 rounded px-3 py-1.5 text-center focus:outline-none focus:ring-2 focus:ring-blue-500" />
-              </td>
-              <td class="px-5 py-3">
-                <input v-model="commentInputs[s.studentId]" type="text"
-                  class="w-full border border-gray-200 rounded px-3 py-1.5 focus:outline-none focus:ring-2 focus:ring-blue-500" placeholder="..." />
-              </td>
-              <td class="px-5 py-3">
-                <button @click="saveGrade(s.studentId)"
-                  :disabled="gradeInputs[s.studentId] === undefined"
-                  class="text-sm text-blue-600 hover:underline disabled:text-gray-300">Хадгалах</button>
-              </td>
-            </tr>
-          </tbody>
-        </table>
-      </div>
-
-      <div v-else-if="selectedClassId && selectedSubjectId" class="text-center py-12 text-gray-400">Сурагч байхгүй</div>
-      <div v-else-if="selectedClassId" class="text-center py-12 text-gray-400">Хичээл сонгоно уу</div>
-
-      <!-- Toast -->
-      <div v-if="toast" class="fixed bottom-6 right-6 bg-green-500 text-white px-6 py-3 rounded-lg shadow-lg">
-        Дүн амжилттай хадгалагдлаа!
+    <div class="card p-5 mb-6">
+      <div class="grid grid-cols-1 md:grid-cols-3 gap-4">
+        <div><label class="label">Сургууль</label><select v-model="schoolId" @change="onSchool" class="select-field"><option value="">Сонгох...</option><option v-for="s in schools" :key="s.schoolId" :value="s.schoolId">{{ s.name }}</option></select></div>
+        <div><label class="label">Анги</label><select v-model="classId" @change="onClass" class="select-field"><option value="">Сонгох...</option><option v-for="c in classes" :key="c.classId" :value="c.classId">{{ c.name }}</option></select></div>
+        <div><label class="label">Огноо</label><input v-model="date" type="date" class="input-field" /></div>
       </div>
     </div>
-  
+
+    <div v-if="students.length" class="card overflow-hidden">
+      <table class="w-full">
+        <thead><tr class="border-b border-stone-100">
+          <th class="table-header w-12">#</th>
+          <th class="table-header">Сурагч</th>
+          <th class="table-header text-center w-20">Ирсэн</th>
+          <th class="table-header text-center w-20">Тасалсан</th>
+          <th class="table-header text-center w-20">Хоцорсон</th>
+          <th class="table-header text-center w-20">Чөлөө</th>
+        </tr></thead>
+        <tbody>
+          <tr v-for="(s, i) in students" :key="s.studentId" class="border-b border-stone-50 last:border-0">
+            <td class="table-cell text-stone-400 font-mono text-xs">{{ i + 1 }}</td>
+            <td class="table-cell font-medium text-stone-800">{{ s.lastName }} {{ s.firstName }}</td>
+            <td v-for="st in statuses" :key="st" class="table-cell text-center">
+              <input type="radio" :name="s.studentId" :value="st" v-model="att[s.studentId]"
+                class="w-4 h-4 text-emerald-600 focus:ring-emerald-500 border-stone-300" />
+            </td>
+          </tr>
+        </tbody>
+      </table>
+      <div class="px-5 py-4 border-t border-stone-100 flex justify-between items-center bg-stone-50/50">
+        <p class="text-xs text-stone-400">Нийт {{ students.length }} сурагч</p>
+        <button @click="submit" :disabled="saving" class="btn-primary">{{ saving ? 'Хадгалж байна...' : 'Ирц хадгалах' }}</button>
+      </div>
+    </div>
+
+    <div v-else-if="classId" class="empty-state"><p class="text-sm text-stone-400">Сурагч байхгүй</p></div>
+
+    <div v-if="toast" class="toast">Ирц хадгалагдлаа!</div>
+  </div>
 </template>
 
 <script setup lang="ts">
 definePageMeta({ middleware: 'auth' })
-
 const { get, post } = useApi()
-const schools = ref<any[]>([])
-const classes = ref<any[]>([])
-const subjects = ref<any[]>([])
-const students = ref<any[]>([])
-const selectedSchoolId = ref('')
-const selectedClassId = ref('')
-const selectedSubjectId = ref('')
-const gradeInputs = reactive<Record<string, number | undefined>>({})
-const commentInputs = reactive<Record<string, string>>({})
-const toast = ref(false)
+const schools = ref<any[]>([]); const classes = ref<any[]>([]); const students = ref<any[]>([])
+const schoolId = ref(''); const classId = ref(''); const date = ref(new Date().toISOString().slice(0, 10))
+const att = reactive<Record<string, string>>({}); const saving = ref(false); const toast = ref(false)
+const statuses = ['PRESENT', 'ABSENT', 'LATE', 'EXCUSED']
 
-onMounted(async () => {
-  try { schools.value = await get('/schools') as any[] } catch {}
-})
-
-const onSchoolChange = async () => {
-  selectedClassId.value = ''; selectedSubjectId.value = ''
-  students.value = []; classes.value = []; subjects.value = []
-  if (!selectedSchoolId.value) return
+onMounted(async () => { try { schools.value = await get('/schools') as any[] } catch {} })
+const onSchool = async () => { classId.value = ''; students.value = []; if (!schoolId.value) return; classes.value = await get(`/schools/${schoolId.value}/classes`) as any[] }
+const onClass = async () => { students.value = []; if (!classId.value) return; const r: any = await get(`/classes/${classId.value}/students`); students.value = r?.students ?? r ?? []; for (const s of students.value) att[s.studentId] = 'PRESENT' }
+const submit = async () => {
+  saving.value = true
   try {
-    classes.value = await get(`/schools/${selectedSchoolId.value}/classes`) as any[]
-    subjects.value = await get(`/subjects?schoolId=${selectedSchoolId.value}`) as any[]
-  } catch {}
-}
-
-const onClassChange = async () => {
-  students.value = []
-  if (!selectedClassId.value) return
-  try {
-    const res: any = await get(`/classes/${selectedClassId.value}/students`)
-    students.value = res?.students ?? res ?? []
-  } catch {}
-}
-
-const saveGrade = async (studentId: string) => {
-  const score = gradeInputs[studentId]
-  if (score === undefined || !selectedSubjectId.value) return
-  try {
-    await post('/grades', {
-      studentId, subjectId: selectedSubjectId.value,
-      classId: selectedClassId.value, score,
-      comment: commentInputs[studentId] || null,
-    })
-    toast.value = true
-    setTimeout(() => toast.value = false, 2000)
-  } catch {}
+    const records = students.value.map(s => ({ studentId: s.studentId, status: att[s.studentId] || 'PRESENT' }))
+    await post('/attendance', { classId: classId.value, date: date.value, records })
+    toast.value = true; setTimeout(() => toast.value = false, 2000)
+  } catch {} finally { saving.value = false }
 }
 </script>

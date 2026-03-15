@@ -1,117 +1,92 @@
 <template>
-  
-    <div class="p-8">
-      <div class="flex justify-between items-center mb-6">
-        <div>
-          <NuxtLink :to="`/schools/${route.params.id}/classes`" class="text-sm text-gray-400 hover:underline">← Ангиуд</NuxtLink>
-          <h1 class="text-2xl font-bold mt-1">Сурагчид</h1>
+  <div class="p-6 lg:p-8 max-w-5xl">
+    <div class="flex justify-between items-center mb-6">
+      <div>
+        <NuxtLink :to="`/schools/${route.params.id}/classes`" class="text-xs text-stone-400 hover:text-emerald-600 transition">← Ангиуд</NuxtLink>
+        <h1 class="page-title mt-1">Сурагчид</h1>
+      </div>
+      <button v-if="auth.canManage" @click="showModal = true" class="btn-primary">+ Сурагч нэмэх</button>
+    </div>
+
+    <div v-if="loading" class="empty-state"><p class="text-stone-400">Уншиж байна...</p></div>
+
+    <div v-else class="card overflow-hidden">
+      <table class="w-full">
+        <thead>
+          <tr class="border-b border-stone-100">
+            <th class="table-header w-12">#</th>
+            <th class="table-header">Овог нэр</th>
+            <th class="table-header hidden md:table-cell">Утас</th>
+            <th class="table-header hidden md:table-cell">И-мэйл</th>
+            <th class="table-header w-20"></th>
+          </tr>
+        </thead>
+        <tbody>
+          <tr v-for="(s, i) in students" :key="s.studentId" class="border-b border-stone-50 last:border-0 hover:bg-stone-50/50 transition">
+            <td class="table-cell text-stone-400 font-mono text-xs">{{ i + 1 }}</td>
+            <td class="table-cell">
+              <div class="flex items-center gap-2.5">
+                <div class="w-8 h-8 bg-emerald-50 rounded-full flex items-center justify-center text-emerald-700 text-xs font-bold border border-emerald-100">
+                  {{ s.firstName?.charAt(0) }}
+                </div>
+                <div>
+                  <p class="font-medium text-stone-800">{{ s.lastName }} {{ s.firstName }}</p>
+                </div>
+              </div>
+            </td>
+            <td class="table-cell text-stone-500 hidden md:table-cell">{{ s.phone || '—' }}</td>
+            <td class="table-cell text-stone-500 hidden md:table-cell">{{ s.email || '—' }}</td>
+            <td class="table-cell text-right">
+              <button v-if="auth.isDirector" @click="del(s.studentId)" class="btn-danger text-xs">Устгах</button>
+            </td>
+          </tr>
+          <tr v-if="!students.length">
+            <td colspan="5" class="empty-state">
+              <div class="empty-icon"><svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24" stroke-width="1.5"><path stroke-linecap="round" stroke-linejoin="round" d="M15.75 6a3.75 3.75 0 11-7.5 0 3.75 3.75 0 017.5 0zM4.501 20.118a7.5 7.5 0 0114.998 0A17.933 17.933 0 0112 21.75c-2.676 0-5.216-.584-7.499-1.632z"/></svg></div>
+              <p class="text-sm text-stone-400">Сурагч байхгүй байна</p>
+            </td>
+          </tr>
+        </tbody>
+      </table>
+    </div>
+    <p v-if="students.length" class="text-xs text-stone-400 mt-3">Нийт {{ students.length }} сурагч</p>
+
+    <!-- Add Modal -->
+    <div v-if="showModal" class="modal-overlay" @click.self="close">
+      <div class="modal-card">
+        <h2 class="text-lg font-bold text-stone-800 mb-4">Сурагч нэмэх</h2>
+        <div class="space-y-3">
+          <div><label class="label">Овог</label><input v-model="form.lastName" class="input-field" placeholder="Бат" /></div>
+          <div><label class="label">Нэр</label><input v-model="form.firstName" class="input-field" placeholder="Дорж" /></div>
+          <div class="grid grid-cols-2 gap-3">
+            <div><label class="label">Утас</label><input v-model="form.phone" class="input-field" placeholder="99112233" /></div>
+            <div><label class="label">И-мэйл</label><input v-model="form.email" class="input-field" placeholder="email" /></div>
+          </div>
         </div>
-        <button v-if="auth.canManage" @click="showModal = true"
-          class="bg-blue-600 text-white px-4 py-2 rounded-lg hover:bg-blue-700 text-sm font-medium transition">
-          + Сурагч нэмэх
-        </button>
-      </div>
-
-      <div v-if="loading" class="text-center py-12 text-gray-400">Уншиж байна...</div>
-
-      <div v-else class="bg-white rounded-xl shadow-sm border border-gray-100 overflow-hidden">
-        <table class="w-full">
-          <thead class="bg-gray-50">
-            <tr>
-              <th class="text-left px-5 py-3 text-xs font-medium text-gray-500 uppercase">#</th>
-              <th class="text-left px-5 py-3 text-xs font-medium text-gray-500 uppercase">Овог нэр</th>
-              <th class="text-left px-5 py-3 text-xs font-medium text-gray-500 uppercase">Утас</th>
-              <th class="text-left px-5 py-3 text-xs font-medium text-gray-500 uppercase">И-мэйл</th>
-              <th class="px-5 py-3"></th>
-            </tr>
-          </thead>
-          <tbody>
-            <tr v-for="(s, i) in students" :key="s.studentId" class="border-t hover:bg-gray-50 transition">
-              <td class="px-5 py-3 text-sm text-gray-400">{{ i + 1 }}</td>
-              <td class="px-5 py-3 font-medium">{{ s.lastName }} {{ s.firstName }}</td>
-              <td class="px-5 py-3 text-sm text-gray-500">{{ s.phone || '—' }}</td>
-              <td class="px-5 py-3 text-sm text-gray-500">{{ s.email || '—' }}</td>
-              <td class="px-5 py-3 text-right">
-                <button v-if="auth.isDirector" @click="deleteStudent(s.studentId)"
-                  class="text-red-500 text-sm hover:underline">Устгах</button>
-              </td>
-            </tr>
-            <tr v-if="!students.length">
-              <td colspan="5" class="px-5 py-12 text-center text-gray-400">
-                <p class="text-4xl mb-2">👤</p>
-                <p>Сурагч байхгүй байна</p>
-              </td>
-            </tr>
-          </tbody>
-        </table>
-      </div>
-      <p v-if="students.length" class="text-sm text-gray-400 mt-3">Нийт {{ students.length }} сурагч</p>
-
-      <!-- Modal -->
-      <div v-if="showModal" class="fixed inset-0 bg-black/50 flex items-center justify-center z-50">
-        <div class="bg-white rounded-2xl p-6 w-full max-w-md shadow-xl">
-          <h2 class="text-lg font-bold mb-4">Сурагч нэмэх</h2>
-          <div class="space-y-3">
-            <input v-model="form.lastName" class="w-full border border-gray-200 rounded-lg px-4 py-2.5 focus:outline-none focus:ring-2 focus:ring-blue-500" placeholder="Овог" />
-            <input v-model="form.firstName" class="w-full border border-gray-200 rounded-lg px-4 py-2.5 focus:outline-none focus:ring-2 focus:ring-blue-500" placeholder="Нэр" />
-            <input v-model="form.phone" class="w-full border border-gray-200 rounded-lg px-4 py-2.5 focus:outline-none focus:ring-2 focus:ring-blue-500" placeholder="Утас" />
-            <input v-model="form.email" class="w-full border border-gray-200 rounded-lg px-4 py-2.5 focus:outline-none focus:ring-2 focus:ring-blue-500" placeholder="И-мэйл" />
-          </div>
-          <p v-if="formError" class="text-red-500 text-sm mt-2">{{ formError }}</p>
-          <div class="flex gap-2 justify-end mt-4">
-            <button @click="closeModal" class="px-4 py-2 border rounded-lg hover:bg-gray-50 transition">Болих</button>
-            <button @click="addStudent" :disabled="saving"
-              class="px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 disabled:opacity-50 transition">
-              {{ saving ? 'Хадгалж байна...' : 'Хадгалах' }}
-            </button>
-          </div>
+        <p v-if="err" class="text-sm text-red-600 mt-2">{{ err }}</p>
+        <div class="flex gap-2 justify-end mt-5">
+          <button @click="close" class="btn-secondary">Болих</button>
+          <button @click="add" :disabled="saving" class="btn-primary">{{ saving ? 'Хадгалж байна...' : 'Хадгалах' }}</button>
         </div>
       </div>
     </div>
-  
+  </div>
 </template>
 
 <script setup lang="ts">
 definePageMeta({ middleware: 'auth' })
-
-const auth = useAuthStore()
-const { get, post, del } = useApi()
-const route = useRoute()
-const students = ref<any[]>([])
-const showModal = ref(false)
-const loading = ref(true)
-const saving = ref(false)
-const formError = ref('')
+const auth = useAuthStore(); const api = useApi(); const route = useRoute()
+const students = ref<any[]>([]); const showModal = ref(false); const loading = ref(true); const saving = ref(false); const err = ref('')
 const form = reactive({ lastName: '', firstName: '', phone: '', email: '' })
 
-const load = async () => {
-  loading.value = true
-  try {
-    const res: any = await get(`/classes/${route.params.classId}/students`)
-    students.value = res?.students ?? res ?? []
-  } catch { students.value = [] }
-  finally { loading.value = false }
+const load = async () => { loading.value = true; try { const r: any = await api.get(`/classes/${route.params.classId}/students`); students.value = r?.students ?? r ?? [] } catch { students.value = [] } finally { loading.value = false } }
+const add = async () => {
+  if (!form.lastName || !form.firstName) { err.value = 'Овог нэр оруулна уу'; return }
+  saving.value = true; err.value = ''
+  try { await api.post('/students', { ...form, classId: route.params.classId, schoolId: route.params.id }); close(); await load() }
+  catch (e: any) { err.value = e?.data?.message ?? 'Алдаа' } finally { saving.value = false }
 }
-
-const addStudent = async () => {
-  if (!form.lastName || !form.firstName) { formError.value = 'Овог нэр оруулна уу'; return }
-  saving.value = true; formError.value = ''
-  try {
-    await post('/students', { ...form, classId: route.params.classId, schoolId: route.params.id })
-    closeModal(); await load()
-  } catch (e: any) { formError.value = e?.data?.message ?? 'Алдаа гарлаа' }
-  finally { saving.value = false }
-}
-
-const deleteStudent = async (studentId: string) => {
-  if (!confirm('Устгах уу?')) return
-  try { await del(`/students/${studentId}`); await load() } catch {}
-}
-
-const closeModal = () => {
-  showModal.value = false; formError.value = ''
-  Object.assign(form, { lastName: '', firstName: '', phone: '', email: '' })
-}
-
+const del = async (id: string) => { if (!confirm('Устгах уу?')) return; try { await api.del(`/students/${id}`); await load() } catch {} }
+const close = () => { showModal.value = false; err.value = ''; Object.assign(form, { lastName: '', firstName: '', phone: '', email: '' }) }
 onMounted(load)
 </script>

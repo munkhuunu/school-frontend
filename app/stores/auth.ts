@@ -2,56 +2,36 @@ import { defineStore } from 'pinia'
 import { useApi } from '~/composables/useApi'
 
 export const useAuthStore = defineStore('auth', {
-  state: () => ({
-    token: null as string | null,
-    user: null as any,
-  }),
-
+  state: () => ({ token: null as string | null, user: null as any }),
   getters: {
-    isLoggedIn: (state) => !!state.token,
-    role: (state) => state.user?.role ?? null,
-    isDirector: (state) => state.user?.role === 'DIRECTOR',
-    isManager: (state) => state.user?.role === 'MANAGER',
-    isTeacher: (state) => state.user?.role === 'TEACHER',
-    isParent: (state) => state.user?.role === 'PARENT',
-    isStudent: (state) => state.user?.role === 'STUDENT',
-    canManage: (state) => ['DIRECTOR', 'MANAGER'].includes(state.user?.role),
+    isLoggedIn: (s) => !!s.token,
+    role: (s) => s.user?.role ?? null,
+    isDirector: (s) => s.user?.role === 'DIRECTOR',
+    isManager: (s) => s.user?.role === 'MANAGER',
+    isTeacher: (s) => s.user?.role === 'TEACHER',
+    canManage: (s) => ['DIRECTOR', 'MANAGER'].includes(s.user?.role),
   },
-
   actions: {
     async login(email: string, password: string) {
       const { post } = useApi()
       const res: any = await post('/auth/login', { email, password })
-      this.token = res.token
-      this.user = res.user
-      useCookie('token', { maxAge: 60 * 60 * 24 }).value = res.token
-      useCookie('user', { maxAge: 60 * 60 * 24 }).value = JSON.stringify(res.user)
+      this.token = res.token; this.user = res.user
+      useCookie('token', { maxAge: 86400 }).value = res.token
+      useCookie('user', { maxAge: 86400 }).value = JSON.stringify(res.user)
     },
-
     async register(email: string, password: string, role: string) {
       const { post } = useApi()
       return await post('/auth/register', { email, password, role })
     },
-
     logout() {
-      this.token = null
-      this.user = null
-      useCookie('token').value = null
-      useCookie('user').value = null
+      this.token = null; this.user = null
+      useCookie('token').value = null; useCookie('user').value = null
       navigateTo('/login')
     },
-
     init() {
-      const tokenCookie = useCookie('token')
-      const userCookie = useCookie('user')
-      this.token = tokenCookie.value ?? null
-      if (userCookie.value) {
-        try {
-          this.user = typeof userCookie.value === 'string'
-            ? JSON.parse(userCookie.value)
-            : userCookie.value
-        } catch { this.user = null }
-      }
+      this.token = useCookie('token').value ?? null
+      const u = useCookie('user').value
+      if (u) { try { this.user = typeof u === 'string' ? JSON.parse(u) : u } catch { this.user = null } }
     }
   }
 })
