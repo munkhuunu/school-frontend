@@ -1,7 +1,7 @@
 <template>
-  <NuxtLayout>
+  
     <div class="p-8">
-      <h1 class="text-2xl font-bold mb-6">Ирц бүртгэх</h1>
+      <h1 class="text-2xl font-bold mb-6">Дүн оруулах</h1>
 
       <!-- Filters -->
       <div class="bg-white rounded-xl shadow-sm border border-gray-100 p-5 mb-6">
@@ -23,81 +23,88 @@
             </select>
           </div>
           <div>
-            <label class="block text-sm font-medium mb-1">Огноо</label>
-            <input v-model="selectedDate" type="date"
-              class="w-full border border-gray-200 rounded-lg px-4 py-2.5 focus:outline-none focus:ring-2 focus:ring-blue-500" />
+            <label class="block text-sm font-medium mb-1">Хичээл</label>
+            <select v-model="selectedSubjectId"
+              class="w-full border border-gray-200 rounded-lg px-4 py-2.5 focus:outline-none focus:ring-2 focus:ring-blue-500">
+              <option value="">Сонгох...</option>
+              <option v-for="sub in subjects" :key="sub.subjectId" :value="sub.subjectId">{{ sub.name }}</option>
+            </select>
           </div>
         </div>
       </div>
 
-      <!-- Attendance Table -->
-      <div v-if="students.length" class="bg-white rounded-xl shadow-sm border border-gray-100 overflow-hidden">
+      <!-- Grade Table -->
+      <div v-if="students.length && selectedSubjectId" class="bg-white rounded-xl shadow-sm border border-gray-100 overflow-hidden">
         <table class="w-full">
           <thead class="bg-gray-50">
             <tr>
               <th class="text-left px-5 py-3 text-xs font-medium text-gray-500 uppercase">#</th>
               <th class="text-left px-5 py-3 text-xs font-medium text-gray-500 uppercase">Сурагч</th>
-              <th class="text-center px-3 py-3 text-xs font-medium text-gray-500 uppercase">Ирсэн</th>
-              <th class="text-center px-3 py-3 text-xs font-medium text-gray-500 uppercase">Тасалсан</th>
-              <th class="text-center px-3 py-3 text-xs font-medium text-gray-500 uppercase">Хоцорсон</th>
-              <th class="text-center px-3 py-3 text-xs font-medium text-gray-500 uppercase">Чөлөөтэй</th>
+              <th class="text-left px-5 py-3 text-xs font-medium text-gray-500 uppercase">Оноо (0-100)</th>
+              <th class="text-left px-5 py-3 text-xs font-medium text-gray-500 uppercase">Тайлбар</th>
+              <th class="px-5 py-3"></th>
             </tr>
           </thead>
           <tbody>
             <tr v-for="(s, i) in students" :key="s.studentId" class="border-t">
               <td class="px-5 py-3 text-sm text-gray-400">{{ i + 1 }}</td>
               <td class="px-5 py-3 font-medium">{{ s.lastName }} {{ s.firstName }}</td>
-              <td v-for="status in statuses" :key="status" class="px-3 py-3 text-center">
-                <input type="radio" :name="s.studentId" :value="status"
-                  v-model="attendanceMap[s.studentId]"
-                  class="w-4 h-4 text-blue-600 focus:ring-blue-500" />
+              <td class="px-5 py-3">
+                <input v-model.number="gradeInputs[s.studentId]" type="number" min="0" max="100"
+                  class="w-20 border border-gray-200 rounded px-3 py-1.5 text-center focus:outline-none focus:ring-2 focus:ring-blue-500" />
+              </td>
+              <td class="px-5 py-3">
+                <input v-model="commentInputs[s.studentId]" type="text"
+                  class="w-full border border-gray-200 rounded px-3 py-1.5 focus:outline-none focus:ring-2 focus:ring-blue-500" placeholder="..." />
+              </td>
+              <td class="px-5 py-3">
+                <button @click="saveGrade(s.studentId)"
+                  :disabled="gradeInputs[s.studentId] === undefined"
+                  class="text-sm text-blue-600 hover:underline disabled:text-gray-300">Хадгалах</button>
               </td>
             </tr>
           </tbody>
         </table>
-
-        <div class="p-5 border-t flex justify-between items-center">
-          <p class="text-sm text-gray-400">Нийт {{ students.length }} сурагч</p>
-          <button @click="submit" :disabled="saving"
-            class="bg-blue-600 text-white px-6 py-2.5 rounded-lg hover:bg-blue-700 disabled:opacity-50 font-medium transition">
-            {{ saving ? 'Хадгалж байна...' : 'Ирц хадгалах' }}
-          </button>
-        </div>
       </div>
 
-      <div v-else-if="selectedClassId" class="text-center py-12 text-gray-400">Сурагч байхгүй</div>
+      <div v-else-if="selectedClassId && selectedSubjectId" class="text-center py-12 text-gray-400">Сурагч байхгүй</div>
+      <div v-else-if="selectedClassId" class="text-center py-12 text-gray-400">Хичээл сонгоно уу</div>
 
       <!-- Toast -->
       <div v-if="toast" class="fixed bottom-6 right-6 bg-green-500 text-white px-6 py-3 rounded-lg shadow-lg">
-        Ирц амжилттай хадгалагдлаа!
+        Дүн амжилттай хадгалагдлаа!
       </div>
     </div>
-  </NuxtLayout>
+  
 </template>
 
 <script setup lang="ts">
-definePageMeta({ layout: false, middleware: 'auth' })
+definePageMeta({ middleware: 'auth' })
 
 const { get, post } = useApi()
 const schools = ref<any[]>([])
 const classes = ref<any[]>([])
+const subjects = ref<any[]>([])
 const students = ref<any[]>([])
 const selectedSchoolId = ref('')
 const selectedClassId = ref('')
-const selectedDate = ref(new Date().toISOString().slice(0, 10))
-const attendanceMap = reactive<Record<string, string>>({})
-const saving = ref(false)
+const selectedSubjectId = ref('')
+const gradeInputs = reactive<Record<string, number | undefined>>({})
+const commentInputs = reactive<Record<string, string>>({})
 const toast = ref(false)
-const statuses = ['PRESENT', 'ABSENT', 'LATE', 'EXCUSED']
 
 onMounted(async () => {
   try { schools.value = await get('/schools') as any[] } catch {}
 })
 
 const onSchoolChange = async () => {
-  selectedClassId.value = ''; students.value = []; classes.value = []
+  selectedClassId.value = ''; selectedSubjectId.value = ''
+  students.value = []; classes.value = []; subjects.value = []
   if (!selectedSchoolId.value) return
-  try { classes.value = await get(`/schools/${selectedSchoolId.value}/classes`) as any[] } catch {}
+  try {
+    classes.value = await get(`/schools/${selectedSchoolId.value}/classes`) as any[]
+    subjects.value = await get(`/subjects?schoolId=${selectedSchoolId.value}`) as any[]
+  } catch {}
 }
 
 const onClassChange = async () => {
@@ -106,21 +113,20 @@ const onClassChange = async () => {
   try {
     const res: any = await get(`/classes/${selectedClassId.value}/students`)
     students.value = res?.students ?? res ?? []
-    for (const s of students.value) attendanceMap[s.studentId] = 'PRESENT'
   } catch {}
 }
 
-const submit = async () => {
-  saving.value = true
+const saveGrade = async (studentId: string) => {
+  const score = gradeInputs[studentId]
+  if (score === undefined || !selectedSubjectId.value) return
   try {
-    const records = students.value.map(s => ({
-      studentId: s.studentId,
-      status: attendanceMap[s.studentId] || 'PRESENT',
-    }))
-    await post('/attendance', { classId: selectedClassId.value, date: selectedDate.value, records })
+    await post('/grades', {
+      studentId, subjectId: selectedSubjectId.value,
+      classId: selectedClassId.value, score,
+      comment: commentInputs[studentId] || null,
+    })
     toast.value = true
     setTimeout(() => toast.value = false, 2000)
   } catch {}
-  finally { saving.value = false }
 }
 </script>

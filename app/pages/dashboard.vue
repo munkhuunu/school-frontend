@@ -1,5 +1,5 @@
 <template>
-  <NuxtLayout>
+  
     <div class="p-8">
       <h2 class="text-2xl font-bold text-gray-800 mb-1">Сайн байна уу 👋</h2>
       <p class="text-gray-400 mb-8">{{ auth.user?.email }}</p>
@@ -41,11 +41,11 @@
         </div>
       </div>
     </div>
-  </NuxtLayout>
+  
 </template>
 
 <script setup lang="ts">
-definePageMeta({ layout: false, middleware: 'auth' })
+definePageMeta({ middleware: 'auth' })
 
 const auth = useAuthStore()
 const { get } = useApi()

@@ -1,5 +1,5 @@
 <template>
-  <NuxtLayout>
+  
     <div class="p-8">
       <div class="flex justify-between items-center mb-6">
         <div>
@@ -68,11 +68,11 @@
         </div>
       </div>
     </div>
-  </NuxtLayout>
+  
 </template>
 
 <script setup lang="ts">
-definePageMeta({ layout: false, middleware: 'auth' })
+definePageMeta({ middleware: 'auth' })
 
 const auth = useAuthStore()
 const { get, post, del } = useApi()
