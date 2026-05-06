@@ -5,19 +5,15 @@ export default defineNuxtConfig({
   modules: ['@pinia/nuxt', '@nuxtjs/tailwindcss'],
   runtimeConfig: {
     public: {
-      apiBase: 'https://2d7uw32t24.execute-api.ap-northeast-1.amazonaws.com/Prod'
+      apiBase: 'https://2d7uw32t24.execute-api.ap-northeast-1.amazonaws.com/Prod',
+      mockMode: true,
     }
   },
   app: {
-    head: {
-      title: 'Сургуулийн удирдлагын систем',
-    }
+    head: { title: 'Сургуулийн удирдлагын систем' }
   },
   postcss: {
-    plugins: {
-      tailwindcss: {},
-      autoprefixer: {},
-    }
+    plugins: { tailwindcss: {}, autoprefixer: {} }
   },
   css: ['~/assets/css/main.css']
 })
