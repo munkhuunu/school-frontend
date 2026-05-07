@@ -3,7 +3,7 @@
     <div class="mb-6 flex items-center justify-between">
       <div>
         <h2 class="page-title">Мэдээллэгүүд</h2>
-        <p class="text-sm text-stone-400 mt-1">Сургуулийн зар далдаан мэдээллэгүүд</h2>
+        <p class="text-sm text-stone-400 mt-1">Сургуулийн зар далдаан мэдээллэгүүд</p>
       </div>
       <button v-if="auth.canTeach" @click="showForm = !showForm" class="btn-primary">Нэмэх</button>
     </div>
@@ -15,7 +15,7 @@
           <input v-model="form.title" class="input-field" required placeholder="Ойр мэдээллэгээний гарчиг" />
         </div>
         <div>
-          <label class="label">Агуулгаа</label>
+          <label class="label">Хүлээн авагч</label>
           <select v-model="form.audience" class="select-field">
             <option value="ALL">Бүгд</option>
             <option value="TEACHER">Багш нар</option>
@@ -81,10 +81,8 @@ const audienceBadge = (a: string) => ({ ALL: 'bg-stone-100 text-stone-600', TEAC
 const audienceLabel = (a: string) => ({ ALL: 'Бүгд', TEACHER: 'Багш нар', STUDENT: 'Сурагчид', PARENT: 'Эцэг эхэд' }[a] ?? a)
 
 const loadAnnouncements = async () => {
-  try {
-    const q = activeFilter.value ? `?audience=${activeFilter.value}` : ''
-    announcements.value = (await sget(`/announcements${q}`) as any[]) ?? []
-  } catch {}
+  const q = activeFilter.value ? `?audience=${activeFilter.value}` : ''
+  announcements.value = (await sget(`/announcements${q}`) as any[]) ?? []
 }
 
 const post = async () => {
