@@ -5,7 +5,7 @@ export default defineNuxtConfig({
   modules: ['@pinia/nuxt', '@nuxtjs/tailwindcss'],
   runtimeConfig: {
     public: {
-      apiBase: 'https://2d7uw32t24.execute-api.ap-northeast-1.amazonaws.com/Prod'
+      apiBase: 'https://1lc7o3pgg0.execute-api.ap-northeast-1.amazonaws.com/Prod'
     }
   },
   app: {
