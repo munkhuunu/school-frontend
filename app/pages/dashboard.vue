@@ -115,7 +115,7 @@
 <script setup lang="ts">
 definePageMeta({ middleware: 'auth' })
 const auth = useAuthStore()
-const { sget } = useApi()
+const { get, sget } = useApi()
 const stats = reactive({ schools: 0, classes: 0, students: 0, teachers: 0, subjects: 0, todayAttendance: 0 })
 const announcements = ref<any[]>([])
 
@@ -154,8 +154,8 @@ onMounted(async () => {
     announcements.value = Array.isArray(r) ? r.slice(0, 5) : []
   } catch {}
   try {
-    const d: any = await sget('/dashboard')
-    if (d) Object.assign(stats, d)
+    const d: any = await get('/dashboard')
+    if (d?.stats) Object.assign(stats, d.stats)
   } catch {}
 })
 </script>

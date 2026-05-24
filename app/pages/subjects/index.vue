@@ -59,10 +59,10 @@ const schools = ref<any[]>([]); const subjects = ref<any[]>([]); const schoolId 
 const showModal = ref(false); const toast = ref(false); const form = reactive({ name: '', desc: '' })
 
 onMounted(async () => { try { schools.value = await get('/schools') as any[] } catch {} })
-const load = async () => { if (!schoolId.value) { subjects.value = []; return }; subjects.value = await get(`/subjects?schoolId=${schoolId.value}`) as any[] }
+const load = async () => { if (!schoolId.value) { subjects.value = []; return }; subjects.value = await get(`/schools/${schoolId.value}/subjects`) as any[] }
 const add = async () => {
   if (!form.name) return
-  await post('/subjects', { name: form.name, description: form.desc || null, schoolId: schoolId.value })
+  await post(`/schools/${schoolId.value}/subjects`, { name: form.name, description: form.desc || null })
   showModal.value = false; Object.assign(form, { name: '', desc: '' })
   toast.value = true; setTimeout(() => toast.value = false, 2000); await load()
 }
