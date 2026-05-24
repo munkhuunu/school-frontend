@@ -3,9 +3,18 @@
     <div class="mb-6 flex items-center justify-between">
       <div>
         <h2 class="page-title">Эцэг эх — Сурагч холбоос</h2>
-        <p class="text-sm text-stone-400 mt-1">Олон-олон холбос удирдах</p>
+        <p class="text-sm text-stone-400 mt-1">Олон-олон холбоос удирдах</p>
       </div>
       <button @click="showForm = !showForm" class="btn-primary">Холбоос нэмэх</button>
+    </div>
+
+    <!-- Search by parentId -->
+    <div class="card p-4 mb-4 flex gap-3 items-end">
+      <div class="flex-1">
+        <label class="label">Эцэг эхийн userId-аар хайх</label>
+        <input v-model="searchParentId" class="input-field" placeholder="userId..." />
+      </div>
+      <button @click="loadLinks" :disabled="!searchParentId" class="btn-secondary h-10 px-5">Хайх</button>
     </div>
 
     <div v-if="showForm" class="card p-5 mb-6">
@@ -59,7 +68,16 @@ const links = ref<any[]>([])
 const showForm = ref(false)
 const linking = ref(false)
 const linkError = ref('')
+const searchParentId = ref('')
 const form = reactive({ parentId: '', studentId: '' })
+
+const loadLinks = async () => {
+  if (!searchParentId.value) return
+  try {
+    const res: any = await sget(`/parents/${searchParentId.value}/students`)
+    links.value = Array.isArray(res) ? res : []
+  } catch { links.value = [] }
+}
 
 const linkParent = async () => {
   linking.value = true; linkError.value = ''
@@ -80,7 +98,9 @@ const removeLink = async (link: any) => {
 }
 
 onMounted(async () => {
-  // Load a sampling of recent links — in production add pagination/search
-  try { links.value = [] } catch {}
+  // SUPER_ADMIN-д schoolId байхгүй тул бүх parent-student холбоосыг харах боломжгүй.
+  // Хэрэглэгч өөрийн schoolId-аар filter хийж харна.
+  // Одоогоор хоосон байна — parentId-аар хайх UI нэмэх шаардлагатай.
+  links.value = []
 })
 </script>

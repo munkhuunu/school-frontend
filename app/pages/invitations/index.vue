@@ -14,7 +14,6 @@
         <div class="flex-1 min-w-[140px]">
           <label class="label">Эрх</label>
           <select v-model="form.role" class="select-field">
-          <option value="SUPER_ADMIN">Админ</option>
             <option value="MANAGER">Менежер</option>
             <option value="TEACHER">Багш</option>
             <option value="PARENT">Эцэг эх</option>

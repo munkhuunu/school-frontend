@@ -83,10 +83,21 @@ const load = async () => { loading.value = true; try { const r: any = await api.
 const add = async () => {
   if (!form.lastName || !form.firstName) { err.value = 'Овог нэр оруулна уу'; return }
   saving.value = true; err.value = ''
-  try { await api.post('/students', { ...form, classId: route.params.classId, schoolId: route.params.id }); close(); await load() }
+  try {
+    // ✅ зөв endpoint: /schools/{schoolId}/students
+    await api.post(`/schools/${route.params.id}/students`, { ...form, classId: route.params.classId })
+    close(); await load()
+  }
   catch (e: any) { err.value = e?.data?.message ?? 'Алдаа' } finally { saving.value = false }
 }
-const del = async (id: string) => { if (!confirm('Устгах уу?')) return; try { await api.del(`/students/${id}`); await load() } catch {} }
+const del = async (sid: string) => {
+  if (!confirm('Устгах уу?')) return
+  try {
+    // ✅ зөв endpoint: /schools/{schoolId}/students/{studentId}
+    await api.del(`/schools/${route.params.id}/students/${sid}`)
+    await load()
+  } catch {}
+}
 const close = () => { showModal.value = false; err.value = ''; Object.assign(form, { lastName: '', firstName: '', phone: '', email: '' }) }
 onMounted(load)
 </script>

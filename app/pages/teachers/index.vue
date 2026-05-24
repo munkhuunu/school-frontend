@@ -62,13 +62,17 @@
       <div class="modal-card">
         <h2 class="text-lg font-bold text-stone-800 mb-1">Анги хуваарилах</h2>
         <p class="text-sm text-stone-400 mb-4">{{ assignTarget?.lastName }} {{ assignTarget?.firstName }}</p>
-        <select v-model="assignClassId" class="select-field mb-4">
+        <select v-model="assignClassId" class="select-field mb-3">
           <option value="">Анги сонгох...</option>
           <option v-for="c in classes" :key="c.classId" :value="c.classId">{{ c.name }} ({{ c.grade }}-р)</option>
         </select>
+        <select v-model="assignSubjectId" class="select-field mb-4">
+          <option value="">Хичээл сонгох...</option>
+          <option v-for="s in subjects" :key="s.subjectId" :value="s.subjectId">{{ s.name }}</option>
+        </select>
         <div class="flex gap-2 justify-end">
           <button @click="showAssign = false" class="btn-secondary">Болих</button>
-          <button @click="assign" class="btn-primary">Хуваарилах</button>
+          <button @click="assign" :disabled="!assignClassId || !assignSubjectId" class="btn-primary">Хуваарилах</button>
         </div>
       </div>
     </div>
@@ -78,22 +82,34 @@
 <script setup lang="ts">
 definePageMeta({ middleware: 'auth' })
 const auth = useAuthStore(); const { get, post } = useApi()
-const schools = ref<any[]>([]); const teachers = ref<any[]>([]); const classes = ref<any[]>([])
+const schools = ref<any[]>([]); const teachers = ref<any[]>([]); const classes = ref<any[]>([]); const subjects = ref<any[]>([])
 const schoolId = ref(''); const showAdd = ref(false); const showAssign = ref(false)
-const assignTarget = ref<any>(null); const assignClassId = ref(''); const err = ref('')
+const assignTarget = ref<any>(null); const assignClassId = ref(''); const assignSubjectId = ref(''); const err = ref('')
 const form = reactive({ lastName: '', firstName: '', email: '', phone: '' })
 
 onMounted(async () => { try { schools.value = await get('/schools') as any[] } catch {} })
 const load = async () => {
   if (!schoolId.value) return
-  teachers.value = await get(`/teachers?schoolId=${schoolId.value}`) as any[]
+  // ✅ зөв endpoint: /schools/{id}/teachers
+  teachers.value = await get(`/schools/${schoolId.value}/teachers`) as any[]
   classes.value = await get(`/schools/${schoolId.value}/classes`) as any[]
+  subjects.value = await get(`/subjects?schoolId=${schoolId.value}`) as any[]
 }
 const addTeacher = async () => {
   if (!form.lastName || !form.firstName) { err.value = 'Овог нэр оруулна уу'; return }
-  await post('/teachers', { ...form, schoolId: schoolId.value })
+  // ✅ зөв endpoint: /schools/{id}/teachers
+  await post(`/schools/${schoolId.value}/teachers`, { ...form })
   showAdd.value = false; err.value = ''; Object.assign(form, { lastName: '', firstName: '', email: '', phone: '' }); await load()
 }
-const openAssign = (t: any) => { assignTarget.value = t; assignClassId.value = ''; showAssign.value = true }
-const assign = async () => { if (!assignClassId.value) return; await post('/teachers/assign', { teacherId: assignTarget.value.teacherId, classId: assignClassId.value }); showAssign.value = false; await load() }
+const openAssign = (t: any) => { assignTarget.value = t; assignClassId.value = ''; assignSubjectId.value = ''; showAssign.value = true }
+const assign = async () => {
+  if (!assignClassId.value || !assignSubjectId.value) return
+  // ✅ subjectId нэмэгдсэн — backend validateTeacherSubjectAssignment шаарддаг
+  await post(`/schools/${schoolId.value}/teachers/assign`, {
+    teacherId: assignTarget.value.teacherId,
+    classId: assignClassId.value,
+    subjectId: assignSubjectId.value,
+  })
+  showAssign.value = false; await load()
+}
 </script>
