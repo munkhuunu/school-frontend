@@ -5,19 +5,29 @@
         <h2 class="page-title">Урилга</h2>
         <p class="text-sm text-stone-400 mt-1">Хэрэглэгчдэд урилга илгээх</p>
       </div>
-      <button @click="showForm = !showForm" :disabled="!activeSchoolId" class="btn-primary">Шинэ урилга</button>
+      <button @click="showForm = !showForm" :disabled="!activeSchoolId" class="btn-primary">
+        Шинэ урилга
+      </button>
+    </div>
+
+    <!-- Debug: одоогийн хэрэглэгчийн role харах -->
+    <div class="text-xs text-stone-400 mb-4">
+      Та: <span class="font-semibold">{{ auth.user?.email }}</span>
+      · Role: <span class="font-semibold">{{ auth.user?.role }}</span>
+      · SchoolId: <span class="font-mono">{{ auth.user?.schoolId ?? 'null' }}</span>
     </div>
 
     <!-- SUPER_ADMIN: сургууль сонгох -->
-    <div v-if="auth.isSuperAdmin" class="card p-4 mb-6">
-      <label class="label">Сургууль</label>
+    <div v-if="isSuperAdmin" class="card p-4 mb-6">
+      <label class="label">Сургууль сонгох</label>
       <select v-model="selectedSchoolId" @change="loadInvites" class="select-field max-w-md">
-        <option value="">Сонгох...</option>
+        <option value="">— Сонгох —</option>
         <option v-for="s in schools" :key="s.schoolId" :value="s.schoolId">{{ s.name }}</option>
       </select>
       <p v-if="!selectedSchoolId" class="text-xs text-stone-400 mt-2">
-        Урилга үүсгэхийн тулд сургууль сонгоно уу
+        Урилга илгээхийн тулд эхлээд сургууль сонгоно уу
       </p>
+      <p v-if="schoolsError" class="text-xs text-red-600 mt-2">{{ schoolsError }}</p>
     </div>
 
     <!-- Шинэ урилга үүсгэх форм -->
@@ -31,7 +41,7 @@
             <option value="TEACHER">Багш</option>
             <option value="PARENT">Эцэг эх</option>
             <option value="STUDENT">Сурагч</option>
-            <option v-if="auth.isSuperAdmin" value="DIRECTOR">Захирал</option>
+            <option v-if="isSuperAdmin" value="DIRECTOR">Захирал</option>
           </select>
         </div>
         <div class="flex-1 min-w-[180px]">
@@ -43,17 +53,10 @@
         </button>
       </form>
 
-      <!-- Алдааны мэдэгдэл -->
       <div v-if="formError" class="mt-3 p-3 bg-red-50 border border-red-100 rounded-xl">
-        <div class="flex items-start gap-2">
-          <svg class="w-4 h-4 text-red-500 mt-0.5 shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24" stroke-width="2">
-            <path stroke-linecap="round" stroke-linejoin="round" d="M12 9v3.75m-9.303 3.376c-.866 1.5.217 3.374 1.948 3.374h14.71c1.732 0 2.813-1.874 1.948-3.374L13.949 3.378c-.866-1.5-3.032-1.5-3.898 0L2.697 16.126zM12 15.75h.007v.008H12v-.008z"/>
-          </svg>
-          <p class="text-sm text-red-700">{{ formError }}</p>
-        </div>
+        <p class="text-sm text-red-700">⚠️ {{ formError }}</p>
       </div>
 
-      <!-- Шинэ урилгын линк -->
       <div v-if="newInvite" class="mt-4 p-3 bg-emerald-50 rounded-xl">
         <p class="text-xs text-stone-500 mb-1">Урилгын линкийг илгээнэ үү</p>
         <div class="flex items-center gap-2">
@@ -69,14 +72,16 @@
     <div class="card overflow-hidden">
       <div class="px-5 py-4 border-b border-stone-100 flex items-center justify-between">
         <h3 class="text-sm font-semibold text-stone-700">Урилгууд</h3>
-        <span v-if="invites.length" class="text-xs text-stone-400">{{ invites.length }} урилга</span>
+        <span v-if="invites.length" class="text-xs text-stone-400">{{ invites.length }} ширхэг</span>
       </div>
 
       <div v-if="loading" class="px-5 py-8 text-center text-sm text-stone-400">Уншиж байна...</div>
       <div v-else-if="!activeSchoolId" class="px-5 py-8 text-center text-sm text-stone-400">
         Сургууль сонгоно уу
       </div>
-      <div v-else-if="!invites.length" class="px-5 py-8 text-center text-sm text-stone-400">Урилга байхгүй</div>
+      <div v-else-if="!invites.length" class="px-5 py-8 text-center text-sm text-stone-400">
+        Урилга байхгүй
+      </div>
 
       <div v-for="inv in invites" :key="inv.token"
            class="px-5 py-3 flex items-center justify-between border-b border-stone-50 last:border-0">
@@ -86,15 +91,13 @@
           </span>
           <div>
             <p class="text-sm font-medium text-stone-700">{{ inv.email ?? 'И-мэйлгүй' }}</p>
-            <p class="text-xs text-stone-400">{{ statusText(inv) }} • {{ inv.expiresAt?.slice(0, 10) }} хүртэл</p>
+            <p class="text-xs text-stone-400">{{ statusText(inv) }} · {{ inv.expiresAt?.slice(0, 10) }} хүртэл</p>
           </div>
         </div>
         <div class="flex items-center gap-2">
-          <button v-if="!inv.usedAt && !inv.revokedAt"
-                  @click="copy(inviteUrl(inv.token))"
+          <button v-if="!inv.usedAt && !inv.revokedAt" @click="copy(inviteUrl(inv.token))"
                   class="text-xs text-emerald-600 hover:underline">Хуулах</button>
-          <button v-if="!inv.usedAt && !inv.revokedAt"
-                  @click="revokeInvite(inv)"
+          <button v-if="!inv.usedAt && !inv.revokedAt" @click="revokeInvite(inv)"
                   class="text-xs text-red-500 hover:underline">Цуцлах</button>
           <span v-if="inv.usedAt" class="text-xs text-stone-400">Хэрэглэгдсэн</span>
           <span v-if="inv.revokedAt" class="text-xs text-red-400">Цуцлагдсан</span>
@@ -111,8 +114,12 @@ definePageMeta({ middleware: 'auth' })
 const auth = useAuthStore()
 const { get, post, del } = useApi()
 
+// ✅ Direct role check (getter цаашид ажиллахгүй бол энэ найдвартай)
+const isSuperAdmin = computed(() => auth.user?.role === 'SUPER_ADMIN')
+
 const invites = ref<any[]>([])
 const schools = ref<any[]>([])
+const schoolsError = ref('')
 const selectedSchoolId = ref('')
 const showForm = ref(false)
 const creating = ref(false)
@@ -123,9 +130,8 @@ const formError = ref('')
 const toast = ref('')
 const form = reactive({ role: 'TEACHER', email: '' })
 
-// SUPER_ADMIN бол сонгосон, бусдад нь өөрийн сургууль
 const activeSchoolId = computed(() => {
-  if (auth.isSuperAdmin) return selectedSchoolId.value || ''
+  if (isSuperAdmin.value) return selectedSchoolId.value || ''
   return auth.user?.schoolId ?? ''
 })
 
@@ -154,7 +160,7 @@ const inviteUrl = (token: string) =>
 
 const showToast = (msg: string) => {
   toast.value = msg
-  setTimeout(() => (toast.value = ''), 2000)
+  setTimeout(() => (toast.value = ''), 2500)
 }
 
 const copy = async (text: string) => {
@@ -167,29 +173,19 @@ const copy = async (text: string) => {
   }
 }
 
-// Backend-аас алдааны мессеж гаргаж авах helper
-const extractError = (e: any): string => {
-  return (
-    e?.data?.message ||
-    e?.data?.error ||
-    e?.response?._data?.message ||
-    e?.response?._data?.error ||
-    e?.message ||
-    'Алдаа гарлаа'
-  )
-}
+const extractError = (e: any): string =>
+  e?.data?.message || e?.data?.error ||
+  e?.response?._data?.message || e?.response?._data?.error ||
+  e?.message || 'Алдаа гарлаа'
 
 const loadInvites = async () => {
   formError.value = ''
-  if (!activeSchoolId.value) {
-    invites.value = []
-    return
-  }
+  invites.value = []
+  if (!activeSchoolId.value) return
   loading.value = true
   try {
-    invites.value = (await get(`/schools/${activeSchoolId.value}/invitations`) as any[]) ?? []
+    invites.value = ((await get(`/schools/${activeSchoolId.value}/invitations`)) as any[]) ?? []
   } catch (e: any) {
-    invites.value = []
     formError.value = extractError(e)
   } finally {
     loading.value = false
@@ -231,22 +227,28 @@ const revokeInvite = async (inv: any) => {
   }
 }
 
-onMounted(async () => {
-  // SUPER_ADMIN-д сургуулиудыг dropdown-д ачаалах
-  if (auth.isSuperAdmin) {
-    try {
-      schools.value = (await get('/schools')) as any[]
-    } catch (e: any) {
-      formError.value = extractError(e)
+const loadSchools = async () => {
+  schoolsError.value = ''
+  try {
+    const res = (await get('/schools')) as any[]
+    schools.value = res ?? []
+    if (!schools.value.length) {
+      schoolsError.value = 'Сургууль олдсонгүй. Эхлээд сургууль үүсгэнэ үү.'
     }
+  } catch (e: any) {
+    schoolsError.value = extractError(e)
+  }
+}
+
+onMounted(async () => {
+  if (isSuperAdmin.value) {
+    await loadSchools()
   } else {
-    // Бусад role-д өөрийн сургуулийн урилгууд автоматаар
     await loadInvites()
   }
 })
 
-// SUPER_ADMIN сургууль сольсон үед урилгууд дахин ачаалах
 watch(activeSchoolId, () => {
-  if (auth.isSuperAdmin) loadInvites()
+  if (isSuperAdmin.value) loadInvites()
 })
 </script>
