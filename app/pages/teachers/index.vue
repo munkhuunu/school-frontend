@@ -5,7 +5,7 @@
       <button v-if="auth.canManage && schoolId" @click="showAdd = true" class="btn-primary">+ Багш нэмэх</button>
     </div>
 
-    <div class="mb-6">
+    <div v-if="auth.isSuperAdmin" class="mb-6">
       <label class="label">Сургууль</label>
       <select v-model="schoolId" @change="load" class="select-field max-w-xs">
         <option value="">Сонгох...</option>
@@ -14,8 +14,7 @@
     </div>
 
     <div v-if="!schoolId" class="empty-state">
-      <div class="empty-icon"><svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24" stroke-width="1.5"><path stroke-linecap="round" stroke-linejoin="round" d="M15 19.128a9.38 9.38 0 002.625.372 9.337 9.337 0 004.121-.952 4.125 4.125 0 00-7.533-2.493M15 19.128v-.003c0-1.113-.285-2.16-.786-3.07M15 19.128v.106A12.318 12.318 0 018.624 21c-2.331 0-4.512-.645-6.374-1.766l-.001-.109a6.375 6.375 0 0111.964-3.07M12 6.375a3.375 3.375 0 11-6.75 0 3.375 3.375 0 016.75 0zm8.25 2.25a2.625 2.625 0 11-5.25 0 2.625 2.625 0 015.25 0z"/></svg></div>
-      <p class="text-sm text-stone-400">Сургууль сонгоно уу</p>
+      <p class="text-sm text-stone-400">{{ auth.isSuperAdmin ? 'Сургууль сонгоно уу' : 'Та сургуульд харьяалагдаагүй байна' }}</p>
     </div>
 
     <div v-else class="space-y-2.5">
@@ -27,7 +26,7 @@
           <div>
             <p class="font-semibold text-stone-800">{{ t.lastName }} {{ t.firstName }}</p>
             <p class="text-xs text-stone-400">{{ t.email || 'И-мэйл байхгүй' }}</p>
-            <p v-if="t.classIds?.length" class="text-xs text-emerald-600 mt-0.5 font-medium">{{ t.classIds.length }} ангид</p>
+            <p v-if="t.assignmentCount" class="text-xs text-emerald-600 mt-0.5 font-medium">{{ t.assignmentCount }} хичээлд</p>
           </div>
         </div>
         <button v-if="auth.canManage" @click="openAssign(t)" class="text-xs text-emerald-600 hover:text-emerald-700 font-medium">Анги хуваарилах</button>
@@ -52,7 +51,7 @@
         <p v-if="err" class="text-sm text-red-600 mt-2">{{ err }}</p>
         <div class="flex gap-2 justify-end mt-5">
           <button @click="showAdd = false" class="btn-secondary">Болих</button>
-          <button @click="addTeacher" class="btn-primary">Хадгалах</button>
+          <button @click="addTeacher" :disabled="saving" class="btn-primary">{{ saving ? '...' : 'Хадгалах' }}</button>
         </div>
       </div>
     </div>
@@ -72,7 +71,9 @@
         </select>
         <div class="flex gap-2 justify-end">
           <button @click="showAssign = false" class="btn-secondary">Болих</button>
-          <button @click="assign" :disabled="!assignClassId || !assignSubjectId" class="btn-primary">Хуваарилах</button>
+          <button @click="assign" :disabled="!assignClassId || !assignSubjectId || assigning" class="btn-primary">
+            {{ assigning ? '...' : 'Хуваарилах' }}
+          </button>
         </div>
       </div>
     </div>
@@ -81,35 +82,72 @@
 
 <script setup lang="ts">
 definePageMeta({ middleware: 'auth' })
-const auth = useAuthStore(); const { get, post } = useApi()
-const schools = ref<any[]>([]); const teachers = ref<any[]>([]); const classes = ref<any[]>([]); const subjects = ref<any[]>([])
-const schoolId = ref(''); const showAdd = ref(false); const showAssign = ref(false)
-const assignTarget = ref<any>(null); const assignClassId = ref(''); const assignSubjectId = ref(''); const err = ref('')
+const auth = useAuthStore()
+const { get, post } = useApi()
+const schools = ref<any[]>([])
+const teachers = ref<any[]>([])
+const classes = ref<any[]>([])
+const subjects = ref<any[]>([])
+const schoolId = ref(auth.schoolId ?? '')
+const showAdd = ref(false)
+const showAssign = ref(false)
+const assignTarget = ref<any>(null)
+const assignClassId = ref('')
+const assignSubjectId = ref('')
+const err = ref('')
+const saving = ref(false)
+const assigning = ref(false)
 const form = reactive({ lastName: '', firstName: '', email: '', phone: '' })
 
-onMounted(async () => { try { schools.value = await get('/schools') as any[] } catch {} })
+onMounted(async () => {
+  if (auth.isSuperAdmin) {
+    try { schools.value = await get('/schools') as any[] } catch {}
+  }
+  if (schoolId.value) await load()
+})
+
 const load = async () => {
   if (!schoolId.value) return
-  // ✅ зөв endpoint: /schools/{id}/teachers
-  teachers.value = await get(`/schools/${schoolId.value}/teachers`) as any[]
-  classes.value = await get(`/schools/${schoolId.value}/classes`) as any[]
-  subjects.value = await get(`/subjects?schoolId=${schoolId.value}`) as any[]
+  try {
+    teachers.value = (await get(`/schools/${schoolId.value}/teachers`) as any[]) ?? []
+    classes.value = (await get(`/schools/${schoolId.value}/classes`) as any[]) ?? []
+    // ✅ FIX: subjects endpoint нь /schools/{id}/subjects, query param БИШ
+    subjects.value = (await get(`/schools/${schoolId.value}/subjects`) as any[]) ?? []
+  } catch {}
 }
+
 const addTeacher = async () => {
   if (!form.lastName || !form.firstName) { err.value = 'Овог нэр оруулна уу'; return }
-  // ✅ зөв endpoint: /schools/{id}/teachers
-  await post(`/schools/${schoolId.value}/teachers`, { ...form })
-  showAdd.value = false; err.value = ''; Object.assign(form, { lastName: '', firstName: '', email: '', phone: '' }); await load()
+  saving.value = true; err.value = ''
+  try {
+    await post(`/schools/${schoolId.value}/teachers`, { ...form })
+    showAdd.value = false
+    Object.assign(form, { lastName: '', firstName: '', email: '', phone: '' })
+    await load()
+  } catch (e: any) {
+    err.value = e?.data?.message ?? 'Алдаа гарлаа'
+  } finally { saving.value = false }
 }
-const openAssign = (t: any) => { assignTarget.value = t; assignClassId.value = ''; assignSubjectId.value = ''; showAssign.value = true }
+
+const openAssign = (t: any) => {
+  assignTarget.value = t
+  assignClassId.value = ''
+  assignSubjectId.value = ''
+  showAssign.value = true
+}
+
 const assign = async () => {
   if (!assignClassId.value || !assignSubjectId.value) return
-  // ✅ subjectId нэмэгдсэн — backend validateTeacherSubjectAssignment шаарддаг
-  await post(`/schools/${schoolId.value}/teachers/assign`, {
-    teacherId: assignTarget.value.teacherId,
-    classId: assignClassId.value,
-    subjectId: assignSubjectId.value,
-  })
-  showAssign.value = false; await load()
+  assigning.value = true
+  try {
+    await post(`/schools/${schoolId.value}/teachers/assign`, {
+      teacherId: assignTarget.value.teacherId,
+      classId: assignClassId.value,
+      subjectId: assignSubjectId.value,
+    })
+    showAssign.value = false
+    await load()
+  } finally { assigning.value = false }
 }
 </script>
+  

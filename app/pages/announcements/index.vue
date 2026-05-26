@@ -2,17 +2,17 @@
   <div class="p-6 lg:p-8 max-w-3xl">
     <div class="mb-6 flex items-center justify-between">
       <div>
-        <h2 class="page-title">Мэдээллэгүүд</h2>
-        <p class="text-sm text-stone-400 mt-1">Сургуулийн зар далдаан мэдээллэгүүд</p>
+        <h2 class="page-title">Мэдээ</h2>
+        <p class="text-sm text-stone-400 mt-1">Сургуулийн зар, мэдээ</p>
       </div>
       <button v-if="auth.canTeach" @click="showForm = !showForm" class="btn-primary">Нэмэх</button>
     </div>
 
     <div v-if="showForm && auth.canTeach" class="card p-5 mb-6">
-      <form @submit.prevent="post" class="space-y-3">
+      <form @submit.prevent="submitAnnouncement" class="space-y-3">
         <div>
           <label class="label">Гарчиг</label>
-          <input v-model="form.title" class="input-field" required placeholder="Ойр мэдээллэгээний гарчиг" />
+          <input v-model="form.title" class="input-field" required placeholder="Мэдээний гарчиг" />
         </div>
         <div>
           <label class="label">Хүлээн авагч</label>
@@ -20,7 +20,7 @@
             <option value="ALL">Бүгд</option>
             <option value="TEACHER">Багш нар</option>
             <option value="STUDENT">Сурагчид</option>
-            <option value="PARENT">Эцэг эхэд</option>
+            <option value="PARENT">Эцэг эх</option>
           </select>
         </div>
         <div>
@@ -45,7 +45,7 @@
     </div>
 
     <div class="space-y-3">
-      <div v-if="!announcements.length" class="card p-8 text-center text-sm text-stone-400">Мэдээллэгүү байхгүй</div>
+      <div v-if="!announcements.length" class="card p-8 text-center text-sm text-stone-400">Мэдээ байхгүй</div>
       <div v-for="a in announcements" :key="a.announcementId" class="card p-5">
         <div class="flex items-start justify-between gap-3 mb-2">
           <h3 class="font-semibold text-stone-800">{{ a.title }}</h3>
@@ -74,18 +74,20 @@ const filters = [
   { val: '', label: 'Бүгд' },
   { val: 'TEACHER', label: 'Багш нар' },
   { val: 'STUDENT', label: 'Сурагчид' },
-  { val: 'PARENT', label: 'Эцэг эхэд' },
+  { val: 'PARENT', label: 'Эцэг эх' },
 ]
 
 const audienceBadge = (a: string) => ({ ALL: 'bg-stone-100 text-stone-600', TEACHER: 'bg-amber-50 text-amber-700', STUDENT: 'bg-sky-50 text-sky-700', PARENT: 'bg-teal-50 text-teal-700' }[a] ?? 'bg-stone-100 text-stone-600')
-const audienceLabel = (a: string) => ({ ALL: 'Бүгд', TEACHER: 'Багш нар', STUDENT: 'Сурагчид', PARENT: 'Эцэг эхэд' }[a] ?? a)
+const audienceLabel = (a: string) => ({ ALL: 'Бүгд', TEACHER: 'Багш нар', STUDENT: 'Сурагчид', PARENT: 'Эцэг эх' }[a] ?? a)
 
 const loadAnnouncements = async () => {
   const q = activeFilter.value ? `?audience=${activeFilter.value}` : ''
-  announcements.value = (await sget(`/announcements${q}`) as any[]) ?? []
+  try {
+    announcements.value = (await sget(`/announcements${q}`) as any[]) ?? []
+  } catch { announcements.value = [] }
 }
 
-const post = async () => {
+const submitAnnouncement = async () => {
   posting.value = true
   try {
     const res: any = await spost('/announcements', { ...form })

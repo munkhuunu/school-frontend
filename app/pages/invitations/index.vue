@@ -2,14 +2,14 @@
   <div class="p-6 lg:p-8 max-w-4xl">
     <div class="mb-6 flex items-center justify-between">
       <div>
-        <h2 class="page-title">Урилгалтаа</h2>
-        <p class="text-sm text-stone-400 mt-1">Хэрэглэгчд урилгалтаа илгээнүү</p>
+        <h2 class="page-title">Урилга</h2>
+        <p class="text-sm text-stone-400 mt-1">Шинэ хэрэглэгчийг урих</p>
       </div>
-      <button @click="showForm = !showForm" class="btn-primary">Шинэ урилгалтаа</button>
+      <button @click="showForm = !showForm" class="btn-primary">Шинэ урилга</button>
     </div>
 
     <div v-if="showForm" class="card p-5 mb-6">
-      <h3 class="text-sm font-semibold text-stone-700 mb-4">Урилгалтаа үүсгэх</h3>
+      <h3 class="text-sm font-semibold text-stone-700 mb-4">Урилга үүсгэх</h3>
       <form @submit.prevent="createInvite" class="flex flex-wrap gap-3 items-end">
         <div class="flex-1 min-w-[140px]">
           <label class="label">Эрх</label>
@@ -22,7 +22,7 @@
           </select>
         </div>
         <div class="flex-1 min-w-[180px]">
-          <label class="label">И-мэйл (заалгавар)</label>
+          <label class="label">И-мэйл (заавал биш)</label>
           <input v-model="form.email" type="email" class="input-field" placeholder="email@example.com" />
         </div>
         <button type="submit" :disabled="creating" class="btn-primary h-10 px-5">
@@ -30,7 +30,7 @@
         </button>
       </form>
       <div v-if="newInvite" class="mt-4 p-3 bg-emerald-50 rounded-xl">
-        <p class="text-xs text-stone-500 mb-1">Урилгалтааны линк илгээрэй</p>
+        <p class="text-xs text-stone-500 mb-1">Энэ линкийг хүлээн авагчид илгээнэ үү</p>
         <div class="flex items-center gap-2">
           <code class="text-xs text-emerald-800 flex-1 break-all">{{ inviteUrl(newInvite.token) }}</code>
           <button @click="copy(inviteUrl(newInvite.token))" class="text-xs text-emerald-700 font-medium hover:underline whitespace-nowrap">
@@ -42,16 +42,16 @@
 
     <div class="card overflow-hidden">
       <div class="px-5 py-4 border-b border-stone-100">
-        <h3 class="text-sm font-semibold text-stone-700">Одоогийн урилгалтаанууд</h3>
+        <h3 class="text-sm font-semibold text-stone-700">Одоогийн урилгууд</h3>
       </div>
-      <div v-if="!invites.length" class="px-5 py-8 text-center text-sm text-stone-400">Урилгалтаа байхгүй</div>
+      <div v-if="!invites.length" class="px-5 py-8 text-center text-sm text-stone-400">Урилга байхгүй</div>
       <div v-for="inv in invites" :key="inv.token" class="px-5 py-3 flex items-center justify-between border-b border-stone-50 last:border-0">
         <div class="flex items-center gap-3">
           <span class="px-2 py-0.5 rounded-lg text-xs font-medium"
             :class="roleBadge(inv.role)">{{ roleLabels[inv.role] ?? inv.role }}</span>
           <div>
             <p class="text-sm font-medium text-stone-700">{{ inv.email ?? 'И-мэйлгүй' }}</p>
-            <p class="text-xs text-stone-400">{{ statusText(inv) }} • {{ inv.expiresAt?.slice(0, 10) }} хүртэл</p>
+            <p class="text-xs text-stone-400">{{ statusText(inv) }} · {{ inv.expiresAt?.slice(0, 10) }} хүртэл</p>
           </div>
         </div>
         <div class="flex items-center gap-2">
@@ -69,7 +69,6 @@
 definePageMeta({ middleware: 'auth' })
 const auth = useAuthStore()
 const { sget, spost, sdel } = useApi()
-const config = useRuntimeConfig()
 
 const invites = ref<any[]>([])
 const showForm = ref(false)
@@ -92,7 +91,7 @@ const statusText = (inv: any) => {
   if (inv.revokedAt) return 'Цуцлагдсан'
   if (inv.usedAt) return 'Хэрэглэгдсэн'
   if (new Date(inv.expiresAt) < new Date()) return 'Дууссан'
-  return 'Идэвхийн'
+  return 'Идэвхтэй'
 }
 
 const inviteUrl = (token: string) =>
@@ -115,7 +114,7 @@ const createInvite = async () => {
 }
 
 const revokeInvite = async (inv: any) => {
-  if (!confirm('Цуцлах уу?')) return
+  if (!confirm('Урилгыг цуцлах уу?')) return
   await sdel(`/invitations/${inv.token}`)
   inv.revokedAt = new Date().toISOString()
 }

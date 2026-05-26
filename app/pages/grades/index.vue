@@ -1,11 +1,10 @@
 <template>
   <div class="p-6 lg:p-8 max-w-6xl">
-    <h1 class="page-title mb-2">Дүн харах</h1>
-    <p class="text-sm text-stone-400 mb-6">Сурагчийн бүх дүнг энд харна. Дүн оруулахын тулд <NuxtLink to="/assignments" class="text-emerald-600 hover:underline">Даалгавар</NuxtLink> хуудас ашиглана уу.</p>
+    <h1 class="page-title mb-6">Дүн оруулах</h1>
 
     <div class="card p-5 mb-6">
-      <div class="grid grid-cols-1 md:grid-cols-3 gap-4">
-        <div>
+      <div class="grid grid-cols-1 md:grid-cols-4 gap-4">
+        <div v-if="auth.isSuperAdmin">
           <label class="label">Сургууль</label>
           <select v-model="schoolId" @change="onSchool" class="select-field">
             <option value="">Сонгох...</option>
@@ -20,102 +19,171 @@
           </select>
         </div>
         <div>
-          <label class="label">Сурагч</label>
-          <select v-model="studentId" @change="loadGrades" class="select-field">
+          <label class="label">Хичээл</label>
+          <select v-model="subjectId" @change="loadAssignments" class="select-field">
             <option value="">Сонгох...</option>
-            <option v-for="s in students" :key="s.studentId" :value="s.studentId">{{ s.lastName }} {{ s.firstName }}</option>
+            <option v-for="s in subjects" :key="s.subjectId" :value="s.subjectId">{{ s.name }}</option>
+          </select>
+        </div>
+        <div>
+          <label class="label">Даалгавар</label>
+          <select v-model="assignmentId" @change="onAssignment" class="select-field">
+            <option value="">Сонгох...</option>
+            <option v-for="a in assignments" :key="a.assignmentId" :value="a.assignmentId">
+              {{ a.title }} ({{ a.maxScore ?? 100 }})
+            </option>
           </select>
         </div>
       </div>
     </div>
 
-    <div v-if="grades.length" class="card overflow-hidden">
+    <div v-if="students.length && assignmentId" class="card overflow-hidden">
       <table class="w-full">
         <thead><tr class="border-b border-stone-100">
-          <th class="table-header">Даалгавар</th>
-          <th class="table-header w-24 text-center">Оноо</th>
-          <th class="table-header w-24 text-center">Дээд</th>
-          <th class="table-header w-20 text-center">%</th>
+          <th class="table-header w-12">#</th>
+          <th class="table-header">Сурагч</th>
+          <th class="table-header w-28">Оноо</th>
           <th class="table-header">Тайлбар</th>
-          <th class="table-header w-28">Огноо</th>
+          <th class="table-header w-24"></th>
         </tr></thead>
         <tbody>
-          <tr v-for="g in grades" :key="g.gradeId ?? g.SK" class="border-b border-stone-50 last:border-0 hover:bg-stone-50/50">
-            <td class="table-cell font-medium text-stone-800">{{ g.assignmentId?.slice(0,8) }}...</td>
-            <td class="table-cell text-center font-semibold text-emerald-700">{{ g.score }}</td>
-            <td class="table-cell text-center text-stone-400">{{ g.maxScore ?? 100 }}</td>
-            <td class="table-cell text-center">
-              <span :class="pctClass(g.score, g.maxScore)" class="px-2 py-0.5 rounded text-xs font-medium">
-                {{ Math.round(g.score / (g.maxScore ?? 100) * 100) }}%
-              </span>
+          <tr v-for="(s, i) in students" :key="s.studentId" class="border-b border-stone-50 last:border-0">
+            <td class="table-cell text-stone-400 font-mono text-xs">{{ i + 1 }}</td>
+            <td class="table-cell font-medium text-stone-800">{{ s.lastName }} {{ s.firstName }}</td>
+            <td class="table-cell">
+              <input v-model.number="scores[s.studentId]" type="number" min="0" :max="currentMaxScore"
+                class="input-field !py-1.5 !px-3 text-center w-20" />
             </td>
-            <td class="table-cell text-stone-500 text-xs">{{ g.comment || '—' }}</td>
-            <td class="table-cell text-stone-400 text-xs">{{ g.gradedAt?.slice(0,10) ?? g.createdAt?.slice(0,10) }}</td>
+            <td class="table-cell"><input v-model="comments[s.studentId]" class="input-field !py-1.5 !px-3" placeholder="..." /></td>
+            <td class="table-cell">
+              <button @click="save(s.studentId)"
+                :disabled="scores[s.studentId] === undefined || savingId === s.studentId"
+                class="text-xs text-emerald-600 hover:text-emerald-700 font-medium disabled:text-stone-300">
+                {{ savingId === s.studentId ? '...' : 'Хадгалах' }}
+              </button>
+            </td>
           </tr>
         </tbody>
       </table>
-      <div class="px-5 py-3 bg-stone-50/50 border-t border-stone-100 text-xs text-stone-500">
-        Нийт {{ grades.length }} дүн · Дундаж: {{ avg }}%
-      </div>
     </div>
 
-    <div v-else-if="studentId && !loading" class="empty-state">
-      <p class="text-sm text-stone-400">Дүн байхгүй байна</p>
+    <div v-else-if="classId && !assignmentId" class="empty-state">
+      <p class="text-sm text-stone-400">Даалгавар сонгоно уу</p>
     </div>
-    <div v-else-if="loading" class="empty-state">
-      <p class="text-sm text-stone-400">Уншиж байна...</p>
+    <div v-else-if="assignmentId && !students.length" class="empty-state">
+      <p class="text-sm text-stone-400">Сурагч байхгүй</p>
     </div>
+
+    <div v-if="toast" class="toast">{{ toast }}</div>
   </div>
 </template>
 
 <script setup lang="ts">
 definePageMeta({ middleware: 'auth' })
-const { get } = useApi()
+const auth = useAuthStore()
+const { get, post } = useApi()
+
 const schools = ref<any[]>([])
 const classes = ref<any[]>([])
+const subjects = ref<any[]>([])
+const assignments = ref<any[]>([])
 const students = ref<any[]>([])
-const grades = ref<any[]>([])
-const schoolId = ref('')
-const classId = ref('')
-const studentId = ref('')
-const loading = ref(false)
 
-const avg = computed(() => {
-  if (!grades.value.length) return 0
-  const sum = grades.value.reduce((a, g) => a + Math.round(g.score / (g.maxScore ?? 100) * 100), 0)
-  return Math.round(sum / grades.value.length)
+const schoolId = ref(auth.schoolId ?? '')
+const classId = ref('')
+const subjectId = ref('')
+const assignmentId = ref('')
+
+const scores = reactive<Record<string, number | undefined>>({})
+const comments = reactive<Record<string, string>>({})
+const toast = ref('')
+const savingId = ref('')
+
+const currentAssignment = computed(() => assignments.value.find(a => a.assignmentId === assignmentId.value))
+const currentMaxScore = computed(() => currentAssignment.value?.maxScore ?? 100)
+
+onMounted(async () => {
+  if (auth.isSuperAdmin) {
+    try { schools.value = await get('/schools') as any[] } catch {}
+  }
+  if (schoolId.value) await loadSchoolData()
 })
 
-const pctClass = (score: number, max: number = 100) => {
-  const p = score / max * 100
-  if (p >= 90) return 'bg-emerald-50 text-emerald-700'
-  if (p >= 70) return 'bg-sky-50 text-sky-700'
-  if (p >= 50) return 'bg-amber-50 text-amber-700'
-  return 'bg-red-50 text-red-700'
+const loadSchoolData = async () => {
+  try {
+    classes.value = (await get(`/schools/${schoolId.value}/classes`) as any[]) ?? []
+    // ✅ FIX: зөв subjects endpoint
+    subjects.value = (await get(`/schools/${schoolId.value}/subjects`) as any[]) ?? []
+  } catch {}
 }
 
-onMounted(async () => { try { schools.value = await get('/schools') as any[] } catch {} })
-
 const onSchool = async () => {
-  classId.value = ''; studentId.value = ''; students.value = []; grades.value = []
-  if (!schoolId.value) return
-  classes.value = await get(`/schools/${schoolId.value}/classes`) as any[]
+  classId.value = ''; subjectId.value = ''; assignmentId.value = ''
+  students.value = []; assignments.value = []
+  if (schoolId.value) await loadSchoolData()
 }
 
 const onClass = async () => {
-  studentId.value = ''; grades.value = []
+  assignmentId.value = ''
+  students.value = []
+  assignments.value = []
   if (!classId.value) return
-  const r: any = await get(`/classes/${classId.value}/students`)
-  students.value = r?.students ?? r ?? []
+  try {
+    const r: any = await get(`/classes/${classId.value}/students`)
+    students.value = r?.students ?? r ?? []
+  } catch { students.value = [] }
+  await loadAssignments()
 }
 
-const loadGrades = async () => {
-  grades.value = []
-  if (!studentId.value || !schoolId.value) return
-  loading.value = true
+const loadAssignments = async () => {
+  assignmentId.value = ''
+  assignments.value = []
+  if (!classId.value || !subjectId.value || !schoolId.value) return
   try {
-    // ✅ зөв endpoint: /schools/{schoolId}/students/{studentId}/grades
-    grades.value = await get(`/schools/${schoolId.value}/students/${studentId.value}/grades`) as any[]
-  } catch { grades.value = [] } finally { loading.value = false }
+    assignments.value = (await get(
+      `/schools/${schoolId.value}/assignments?classId=${classId.value}&subjectId=${subjectId.value}`
+    ) as any[]) ?? []
+  } catch { assignments.value = [] }
+}
+
+const onAssignment = async () => {
+  // Аль хэдийн оруулсан дүнг load хийх
+  if (!assignmentId.value) return
+  try {
+    const existingGrades: any = await get(
+      `/schools/${schoolId.value}/assignments/${assignmentId.value}/grades`
+    )
+    if (Array.isArray(existingGrades)) {
+      for (const g of existingGrades) {
+        scores[g.studentId] = g.score
+        comments[g.studentId] = g.comment ?? ''
+      }
+    }
+  } catch {}
+}
+
+const save = async (sid: string) => {
+  if (scores[sid] === undefined || !assignmentId.value) return
+  if ((scores[sid] as number) > currentMaxScore.value) {
+    toast.value = `Оноо ${currentMaxScore.value}-аас их байж болохгүй`
+    setTimeout(() => toast.value = '', 2000)
+    return
+  }
+  savingId.value = sid
+  try {
+    // ✅ FIX: backend нь зөвхөн assignment-аар дүн авдаг
+    await post(`/schools/${schoolId.value}/assignments/${assignmentId.value}/grades`, {
+      studentId: sid,
+      score: scores[sid],
+      comment: comments[sid] || null,
+      subjectId: subjectId.value,
+      maxScore: currentMaxScore.value,
+    })
+    toast.value = 'Дүн хадгалагдлаа'
+    setTimeout(() => toast.value = '', 2000)
+  } catch (e: any) {
+    toast.value = e?.data?.message ?? 'Алдаа гарлаа'
+    setTimeout(() => toast.value = '', 2500)
+  } finally { savingId.value = '' }
 }
 </script>

@@ -1,16 +1,10 @@
 export const useApi = () => {
   const config = useRuntimeConfig()
-  const token = useCookie('token')
-  const userCookie = useCookie('user')
+  const token = useCookie<string | null>('token')
+  // ✅ FIX: useCookie нь автомат JSON encode/decode хийдэг — гараар stringify хийх хэрэггүй
+  const userCookie = useCookie<{ schoolId?: string | null } | null>('user')
 
-  // reactive computed — school солигдоход автоматаар шинэчлэгдэнэ
-  const schoolId = computed<string | null>(() => {
-    try {
-      const u = userCookie.value
-      const user = typeof u === 'string' ? JSON.parse(u) : u
-      return user?.schoolId ?? null
-    } catch { return null }
-  })
+  const schoolId = computed<string | null>(() => userCookie.value?.schoolId ?? null)
 
   const h = (): Record<string, string> => {
     const headers: Record<string, string> = { 'Content-Type': 'application/json' }
@@ -29,11 +23,18 @@ export const useApi = () => {
   const put  = (path: string, body: any) => $fetch(`${base}${path}`, { method: 'PUT',    headers: h(), body, onResponseError: onErr })
   const del  = (path: string)            => $fetch(`${base}${path}`, { method: 'DELETE', headers: h(), onResponseError: onErr })
 
-  // schoolId reactive тул computed.value ашиглана
-  const sget  = (path: string)            => get(`/schools/${schoolId.value}${path}`)
-  const spost = (path: string, body: any) => post(`/schools/${schoolId.value}${path}`, body)
-  const sput  = (path: string, body: any) => put(`/schools/${schoolId.value}${path}`, body)
-  const sdel  = (path: string)            => del(`/schools/${schoolId.value}${path}`)
+  // ✅ FIX: schoolId null үед буруу URL үүсгэхгүй
+  const ensureSchool = (): string => {
+    if (!schoolId.value) {
+      throw new Error('Та сургуульд харьяалагдаагүй байна. SUPER_ADMIN бол сургууль сонгох шаардлагатай.')
+    }
+    return schoolId.value
+  }
+
+  const sget  = (path: string)            => get(`/schools/${ensureSchool()}${path}`)
+  const spost = (path: string, body: any) => post(`/schools/${ensureSchool()}${path}`, body)
+  const sput  = (path: string, body: any) => put(`/schools/${ensureSchool()}${path}`, body)
+  const sdel  = (path: string)            => del(`/schools/${ensureSchool()}${path}`)
 
   return { get, post, put, del, sget, spost, sput, sdel, schoolId }
 }

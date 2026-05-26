@@ -3,7 +3,7 @@
     <div class="mb-6 flex items-center justify-between">
       <div>
         <h2 class="page-title">Эцэг эх — Сурагч холбоос</h2>
-        <p class="text-sm text-stone-400 mt-1">Олон-олон холбоос удирдах</p>
+        <p class="text-sm text-stone-400 mt-1">Эцэг эх болон хүүхдийн холбоо удирдах</p>
       </div>
       <button @click="showForm = !showForm" class="btn-primary">Холбоос нэмэх</button>
     </div>
@@ -12,9 +12,11 @@
     <div class="card p-4 mb-4 flex gap-3 items-end">
       <div class="flex-1">
         <label class="label">Эцэг эхийн userId-аар хайх</label>
-        <input v-model="searchParentId" class="input-field" placeholder="userId..." />
+        <input v-model="searchParentId" class="input-field" placeholder="userId..." @keyup.enter="loadLinks" />
       </div>
-      <button @click="loadLinks" :disabled="!searchParentId" class="btn-secondary h-10 px-5">Хайх</button>
+      <button @click="loadLinks" :disabled="!searchParentId || searching" class="btn-secondary h-10 px-5">
+        {{ searching ? '...' : 'Хайх' }}
+      </button>
     </div>
 
     <div v-if="showForm" class="card p-5 mb-6">
@@ -33,14 +35,24 @@
         </button>
       </form>
       <p v-if="linkError" class="text-sm text-red-600 mt-2">{{ linkError }}</p>
+      <p class="text-xs text-stone-400 mt-3">
+        Тайлбар: PARENT эрхтэй хэрэглэгч урилгаар бүртгүүлсний дараа тухайн хэрэглэгчийн userId-г энд оруулж сурагчтай холбоно.
+      </p>
     </div>
 
     <div class="card overflow-hidden">
-      <div class="px-5 py-4 border-b border-stone-100">
+      <div class="px-5 py-4 border-b border-stone-100 flex items-center justify-between">
         <h3 class="text-sm font-semibold text-stone-700">Холбоосууд</h3>
+        <span v-if="searchParentId && links.length" class="text-xs text-stone-400">{{ links.length }} холбоос</span>
       </div>
-      <div v-if="!links.length" class="px-5 py-8 text-center text-sm text-stone-400">Холбоос байхгүй</div>
-      <div v-for="link in links" :key="link.SK" class="px-5 py-3 flex items-center justify-between border-b border-stone-50 last:border-0">
+      <div v-if="!searchParentId" class="px-5 py-8 text-center text-sm text-stone-400">
+        Эцэг эхийн userId оруулж хайна уу
+      </div>
+      <div v-else-if="!links.length && !searching" class="px-5 py-8 text-center text-sm text-stone-400">
+        Холбоос байхгүй
+      </div>
+      <div v-for="link in links" :key="`${link.parentId}-${link.studentId}`"
+           class="px-5 py-3 flex items-center justify-between border-b border-stone-50 last:border-0">
         <div class="flex items-center gap-4">
           <div class="text-sm">
             <span class="font-medium text-stone-700">Эцэг эх:</span>
@@ -52,11 +64,14 @@
           <div class="text-sm">
             <span class="font-medium text-stone-700">Сурагч:</span>
             <code class="text-xs text-stone-500 ml-1">{{ link.studentId }}</code>
+            <span v-if="link.studentName" class="text-xs text-stone-600 ml-2">({{ link.studentName }})</span>
           </div>
         </div>
         <button @click="removeLink(link)" class="text-xs text-red-500 hover:underline">Салгах</button>
       </div>
     </div>
+
+    <div v-if="toast" class="toast">{{ toast }}</div>
   </div>
 </template>
 
@@ -69,23 +84,32 @@ const showForm = ref(false)
 const linking = ref(false)
 const linkError = ref('')
 const searchParentId = ref('')
+const searching = ref(false)
+const toast = ref('')
 const form = reactive({ parentId: '', studentId: '' })
+
+const showToast = (msg: string) => { toast.value = msg; setTimeout(() => (toast.value = ''), 2000) }
 
 const loadLinks = async () => {
   if (!searchParentId.value) return
+  searching.value = true
   try {
     const res: any = await sget(`/parents/${searchParentId.value}/students`)
     links.value = Array.isArray(res) ? res : []
-  } catch { links.value = [] }
+  } catch { links.value = [] } finally { searching.value = false }
 }
 
 const linkParent = async () => {
   linking.value = true; linkError.value = ''
   try {
     const res: any = await spost(`/parents/${form.parentId}/students`, { studentId: form.studentId })
-    links.value.push(res)
+    // Хэрэв одоо хайсан parent-ийн холбоос гарч ирвэл шууд нэмэх
+    if (form.parentId === searchParentId.value) {
+      links.value.push(res ?? { parentId: form.parentId, studentId: form.studentId })
+    }
     form.parentId = ''; form.studentId = ''
     showForm.value = false
+    showToast('Холбоос үүслээ')
   } catch (e: any) {
     linkError.value = e?.data?.message ?? 'Алдаа гарлаа'
   } finally { linking.value = false }
@@ -93,14 +117,10 @@ const linkParent = async () => {
 
 const removeLink = async (link: any) => {
   if (!confirm('Холбоосыг салгах уу?')) return
-  await sdel(`/parents/${link.parentId}/students/${link.studentId}`)
-  links.value = links.value.filter(l => l.SK !== link.SK)
+  try {
+    await sdel(`/parents/${link.parentId}/students/${link.studentId}`)
+    links.value = links.value.filter(l => !(l.parentId === link.parentId && l.studentId === link.studentId))
+    showToast('Холбоос салгагдлаа')
+  } catch {}
 }
-
-onMounted(async () => {
-  // SUPER_ADMIN-д schoolId байхгүй тул бүх parent-student холбоосыг харах боломжгүй.
-  // Хэрэглэгч өөрийн schoolId-аар filter хийж харна.
-  // Одоогоор хоосон байна — parentId-аар хайх UI нэмэх шаардлагатай.
-  links.value = []
-})
 </script>

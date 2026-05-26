@@ -1,10 +1,24 @@
 import { defineStore } from 'pinia'
 import { useApi } from '~/composables/useApi'
 
+interface AuthUser {
+  userId: string
+  email: string
+  role: string
+  schoolId: string | null
+}
+
+const COOKIE_OPTS = {
+  maxAge: 86400,
+  secure: true,
+  sameSite: 'lax' as const,
+  path: '/',
+}
+
 export const useAuthStore = defineStore('auth', {
   state: () => ({
     token: null as string | null,
-    user: null as { userId: string; email: string; role: string; schoolId: string | null } | null,
+    user: null as AuthUser | null,
   }),
   getters: {
     isLoggedIn: (s) => !!s.token,
@@ -29,8 +43,9 @@ export const useAuthStore = defineStore('auth', {
       const res: any = await post('/auth/login', { email, password })
       this.token = res.token
       this.user = res.user
-      useCookie('token', { maxAge: 86400 }).value = res.token
-      useCookie('user', { maxAge: 86400 }).value = JSON.stringify(res.user)
+      // ✅ FIX: useCookie нь автомат encode хийдэг — гараар JSON.stringify хийхгүй
+      useCookie<string>('token', COOKIE_OPTS).value = res.token
+      useCookie<AuthUser>('user', COOKIE_OPTS).value = res.user
     },
     async register(email: string, password: string, inviteToken: string) {
       const { post } = useApi()
@@ -43,15 +58,20 @@ export const useAuthStore = defineStore('auth', {
     logout() {
       this.token = null
       this.user = null
-      useCookie('token').value = null
-      useCookie('user').value = null
+      useCookie('token', COOKIE_OPTS).value = null
+      useCookie('user', COOKIE_OPTS).value = null
       navigateTo('/login')
     },
     init() {
-      this.token = useCookie('token').value ?? null
-      const u = useCookie('user').value
+      this.token = useCookie<string | null>('token').value ?? null
+      // ✅ FIX: cookie нь шууд object буцаана (string ч хатуу JSON.parse шаардлагагүй)
+      const u = useCookie<AuthUser | string | null>('user').value
       if (u) {
-        try { this.user = typeof u === 'string' ? JSON.parse(u) : u } catch { this.user = null }
+        if (typeof u === 'string') {
+          try { this.user = JSON.parse(u) } catch { this.user = null }
+        } else {
+          this.user = u
+        }
       }
     },
   },
